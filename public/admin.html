@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>Administration — Le Mot Juste</title>
+<style>
+:root{--bg:#0f1a2e;--card:#17253f;--ink:#f3ead7;--mut:#9fb0c8;--gold:#e0b04a;--ok:#4cc38a;--no:#ef6b6b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,sans-serif;padding:0 0 2rem}
+.top{background:var(--gold);color:#241a06;font-weight:700;text-align:center;padding:.6rem;letter-spacing:.1em;text-transform:uppercase;font-size:.85rem}
+main{max-width:980px;margin:0 auto;padding:1rem}h1{font-size:1.3rem;margin:.5rem 0}h2{font-size:1rem;margin:0 0 .6rem;color:var(--gold)}
+.card{background:var(--card);border-radius:12px;padding:1rem;margin-bottom:1rem;overflow-x:auto}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.7rem;margin-bottom:1rem}.kpi{background:var(--card);border-radius:12px;padding:.8rem}.kpi b{display:block;font-size:1.6rem}.kpi span{color:var(--mut);font-size:.8rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}
+table{width:100%;border-collapse:collapse;font-size:.88rem}th,td{text-align:left;padding:.4rem .5rem;border-bottom:1px solid #26385a}th{color:var(--mut);font-weight:600}
+input,button,select{font:inherit;border-radius:8px;border:1px solid #33496f;background:#0f1a2e;color:var(--ink);padding:.55rem .8rem}button{background:var(--gold);color:#241a06;border:0;font-weight:700;cursor:pointer}
+.row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:.8rem}
+.bar{display:flex;align-items:center;gap:.5rem;margin:.3rem 0;font-size:.85rem}.bar i{display:block;height:9px;border-radius:5px;background:var(--gold);min-width:2px}.bar span:first-child{width:90px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chart{display:flex;align-items:flex-end;gap:3px;height:120px}.chart div{flex:1;background:var(--gold);border-radius:3px 3px 0 0;min-height:2px;opacity:.9}
+.ok{color:var(--ok)}.no{color:var(--no)}#login{max-width:340px;margin:3rem auto;text-align:center}#login input{width:100%;margin:.6rem 0}#err{color:var(--no);min-height:1.2em}
+footer{text-align:center;color:var(--mut);font-size:.72rem;padding:1rem}
+</style></head><body>
+<div class="top">Administration — Le Mot Juste</div>
+<main>
+<section id="login" class="card" hidden><h1>Connexion</h1><form id="f"><input id="em" type="email" placeholder="Adresse e-mail" autocomplete="username" required><input id="pw" type="password" placeholder="Mot de passe" autocomplete="current-password" required><button>Se connecter</button></form><p id="err"></p></section>
+<section id="dash" hidden>
+ <div class="row"><h1>Tableau de bord</h1><div><select id="days"><option value="7">7 jours</option><option value="30" selected>30 jours</option><option value="90">90 jours</option><option value="365">1 an</option></select> <button id="out">Déconnexion</button></div></div>
+ <div class="kpis" id="kpis"></div>
+ <div class="card"><h2>Visites par jour</h2><div class="chart" id="chart"></div></div>
+ <div class="card"><h2>Jeux : ouvertures et réussites</h2><table id="games"></table></div>
+ <div class="card"><h2>Questions les plus ratées (3 réponses minimum)</h2><table id="hard"></table></div>
+ <div class="grid"><div class="card"><h2>Appareils</h2><div id="dev"></div></div><div class="card"><h2>Pays</h2><div id="cty"></div></div><div class="card"><h2>Provenance</h2><div id="ref"></div></div></div>
+ <div class="card"><h2>Dernières parties terminées</h2><table id="rec"></table></div>
+</section></main>
+<footer>© 2026 SDF Technologie (Solution Digitale du Futur). Données anonymes : aucune adresse IP n'est enregistrée.</footer>
+<script>
+const $=s=>document.querySelector(s),G={quiz:"Quiz vocabulaire",memory:"Mémoire",hangman:"Pendu",maths:"Quiz de maths",histgeo:"Quiz Histoire-Géo"},U={quiz:"/10",maths:"/10",histgeo:"/10",memory:" coups",hangman:" erreurs"};
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pct=(a,b)=>b?Math.round(a*100/b)+" %":"—",gn=g=>G[g]||g||"?";
+function show(ok){$("#login").hidden=ok;$("#dash").hidden=!ok}
+async function load(){const r=await fetch("/api/admin/stats?days="+$("#days").value);if(r.status===401)return show(false);if(!r.ok)return;show(true);render(await r.json())}
+function bars(el,rows){const m=Math.max(1,...rows.map(r=>r.n));$(el).innerHTML=rows.length?rows.map(r=>`<div class="bar"><span title="${esc(r.k)}">${esc(r.k)}</span><i style="width:${r.n*100/m*.6}%"></i><span>${r.n}</span></div>`).join(""):"<small>Aucune donnée</small>"}
+function render(d){
+ const st=d.games.reduce((a,g)=>(a.s+=g.starts||0,a.e+=g.ends||0,a.w+=g.wins||0,a),{s:0,e:0,w:0});
+ $("#kpis").innerHTML=[[d.visits.v,"Visites"],[d.visits.u,"Visiteurs uniques"],[st.s,"Parties lancées"],[st.e,"Parties terminées"],[pct(st.w,st.e),"Taux de réussite"],[d.online,"Actifs (5 min)"],[d.total,"Événements enregistrés"]].map(k=>`<div class="kpi"><b>${k[0]}</b><span>${k[1]}</span></div>`).join("");
+ const m=Math.max(1,...d.daily.map(x=>x.v));$("#chart").innerHTML=d.daily.map(x=>`<div style="height:${x.v*100/m}%" title="${esc(x.day)} : ${x.v} visites, ${x.u} visiteurs"></div>`).join("")||"<small>Aucune visite</small>";
+ $("#games").innerHTML="<tr><th>Jeu</th><th>Lancées</th><th>Terminées</th><th>Réussite</th><th>Score moyen</th></tr>"+d.games.filter(g=>g.game).map(g=>`<tr><td>${esc(gn(g.game))}</td><td>${g.starts}</td><td>${g.ends}</td><td>${pct(g.wins,g.ends)}</td><td>${g.avg==null?"—":(+g.avg).toFixed(1)+(U[g.game]||"")}</td></tr>`).join("");
+ $("#hard").innerHTML="<tr><th>Jeu</th><th>Question</th><th>Essais</th><th>Réussite</th></tr>"+(d.hard.map(h=>`<tr><td>${esc(gn(h.game))}</td><td>${esc(h.detail)}</td><td>${h.n}</td><td class="${h.good*2<h.n?"no":"ok"}">${pct(h.good,h.n)}</td></tr>`).join("")||"<tr><td colspan=4>Pas encore assez de données</td></tr>");
+ bars("#dev",d.devices);bars("#cty",d.countries);bars("#ref",d.refs);
+ $("#rec").innerHTML="<tr><th>Date (Dakar)</th><th>Jeu</th><th>Résultat</th><th>Pays</th><th>Appareil</th></tr>"+d.recent.map(r=>`<tr><td>${new Date(r.ts).toLocaleString("fr-FR",{timeZone:"Africa/Dakar"})}</td><td>${esc(gn(r.game))}</td><td class="${r.ok?"ok":"no"}">${r.score}${U[r.game]||""}</td><td>${esc(r.country)}</td><td>${esc(r.device)}</td></tr>`).join("");
+}
+$("#f").onsubmit=async e=>{e.preventDefault();$("#err").textContent="";const r=await fetch("/api/admin/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email:$("#em").value,password:$("#pw").value})});if(r.ok){$("#pw").value="";load()}else $("#err").textContent=r.status===503?"Accès non configuré (voir le README).":"E-mail ou mot de passe incorrect."};
+$("#out").onclick=async()=>{await fetch("/api/admin/logout");show(false)};$("#days").onchange=load;load();
+</script></body></html>

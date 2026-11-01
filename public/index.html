@@ -211,6 +211,13 @@ button:focus-visible { outline:2px solid var(--color-gold); outline-offset:3px; 
 <script>
 (function(){
 "use strict";
+/* Statistiques anonymes (Cloudflare) */
+var SID=(function(){try{var k="lmj_sid",v=localStorage.getItem(k);if(!v){v=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Math.random()).slice(2)+Date.now();localStorage.setItem(k,v);}return v;}catch(e){return "anon"+Math.random().toString(36).slice(2,10);}})();
+var TQ=[],TT=null;
+function track(t,g,o){o=o||{};TQ.push({t:t,g:g||"",s:o.s,n:o.n,w:o.w,d:o.d});if(TQ.length>=10)flushTrack();else if(!TT)TT=setTimeout(flushTrack,2000);}
+function flushTrack(){clearTimeout(TT);TT=null;if(!TQ.length)return;try{fetch("/api/track",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({sid:SID,events:TQ.splice(0,20)}),keepalive:true}).catch(function(){});}catch(e){}}
+document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden")flushTrack();});
+try{if(!sessionStorage.getItem("lmj_v")){sessionStorage.setItem("lmj_v","1");var rh="";try{rh=document.referrer?new URL(document.referrer).hostname:"";}catch(e){}track("visit","",{d:rh===location.hostname?"":rh});}}catch(e){}
 
 var WORDS=[
 {fr:"chat",en:"cat"},{fr:"chien",en:"dog"},{fr:"maison",en:"house"},{fr:"pomme",en:"apple"},
@@ -226,7 +233,7 @@ var WORDS=[
 function shuffle(arr){var a=arr.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;}return a;}
 function loadBest(key){try{var v=localStorage.getItem(key);return v!==null?JSON.parse(v):null;}catch(e){return null;}}
 function saveBest(key,value){try{localStorage.setItem(key,JSON.stringify(value));}catch(e){}}
-function showScreen(id){document.querySelectorAll(".screen").forEach(function(s){s.hidden=true;});document.getElementById(id).hidden=false;window.scrollTo(0,0);}
+function showScreen(id){document.querySelectorAll(".screen").forEach(function(s){s.hidden=true;});document.getElementById(id).hidden=false;window.scrollTo(0,0);if(id!=="screen-home")track("start",id.replace("screen-",""));}
 document.querySelectorAll("[data-back]").forEach(function(btn){btn.addEventListener("click",function(){showScreen("screen-home");refreshRecords();});});
 
 function refreshRecords(){
@@ -266,7 +273,7 @@ function handleQuizAnswer(selected,chosen,correct){
  if(quiz.locked)return;quiz.locked=true;
  document.querySelectorAll("#quiz-options .btn-option").forEach(function(b){b.disabled=true;if(b.textContent===correct)b.classList.add("is-correct");});
  var fb=document.getElementById("quiz-feedback");
- if(chosen===correct){quiz.score++;fb.textContent="Bonne réponse !";fb.className="feedback-row ok";}
+ track("q","quiz",{w:chosen===correct?1:0,d:quiz.pool[quiz.index].fr+" → "+correct});if(chosen===correct){quiz.score++;fb.textContent="Bonne réponse !";fb.className="feedback-row ok";}
  else{selected.classList.add("is-wrong");fb.textContent="Pas tout à fait, la bonne réponse est en vert.";fb.className="feedback-row no";}
  document.getElementById("quiz-score").textContent="Score : "+quiz.score;
  var n=document.getElementById("btn-quiz-next");n.hidden=false;n.textContent=quiz.index+1<quiz.total?"Continuer":"Voir le résultat";
@@ -275,7 +282,7 @@ function nextQuizQuestion(){quiz.index++;if(quiz.index>=quiz.total)finishQuiz();
 function finishQuiz(){
  var best=loadBest("lmj_quiz_best");if(best===null||quiz.score>best)saveBest("lmj_quiz_best",quiz.score);
  document.getElementById("quiz-question-panel").hidden=true;document.getElementById("quiz-result-panel").hidden=false;
- document.getElementById("quiz-final-score").textContent=quiz.score+" / "+quiz.total;
+ document.getElementById("quiz-final-score").textContent=quiz.score+" / "+quiz.total;track("end","quiz",{s:quiz.score,n:quiz.total,w:quiz.score>=quiz.total/2?1:0});
 }
 
 /* MEMOIRE */
@@ -324,7 +331,7 @@ function flipMemory(index){
 function finishMemory(){
  var best=loadBest("lmj_memory_best");
  if(best===null||memory.moves<best)saveBest("lmj_memory_best",memory.moves);
- var btn=document.getElementById("btn-memory-restart");btn.hidden=false;btn.textContent="Rejouer";
+ track("end","memory",{s:memory.moves,n:0,w:1});var btn=document.getElementById("btn-memory-restart");btn.hidden=false;btn.textContent="Rejouer";
 }
 
 /* PENDU */
@@ -368,11 +375,11 @@ function checkHangmanEnd(){
  for(var i=0;i<target.length;i++){if(hangman.guessed.indexOf(target[i])<0){won=false;break;}}
  var banner=document.getElementById("hangman-result");
  if(won){
-  hangman.over=true;banner.textContent="Bravo ! Le mot était « "+hangman.word.en+" ».";banner.className="result-banner win";
+  hangman.over=true;banner.textContent="Bravo ! Le mot était « "+hangman.word.en+" ».";banner.className="result-banner win";track("end","hangman",{s:hangman.wrong,n:hangman.maxWrong,w:1});
   var wins=loadBest("lmj_hangman_wins")||0;saveBest("lmj_hangman_wins",wins+1);
   document.getElementById("btn-hangman-next").hidden=false;
  }else if(hangman.wrong>=hangman.maxWrong){
-  hangman.over=true;banner.textContent="Perdu ! Le mot était « "+hangman.word.en+" ».";banner.className="result-banner lose";
+  hangman.over=true;banner.textContent="Perdu ! Le mot était « "+hangman.word.en+" ».";banner.className="result-banner lose";track("end","hangman",{s:hangman.wrong,n:hangman.maxWrong,w:0});
   document.getElementById("btn-hangman-next").hidden=false;
  }
 }
@@ -495,7 +502,7 @@ function makeCebQuiz(cfg){
   if(st.locked)return;st.locked=true;
   document.querySelectorAll("#"+cfg.id+"-options .btn-option").forEach(function(b){b.disabled=true;if(b.textContent===correct)b.classList.add("is-correct");});
   var fb=el("feedback");
-  if(chosen===correct){st.score++;fb.textContent="Bonne réponse !";fb.className="feedback-row ok";}
+  track("q",cfg.id,{w:chosen===correct?1:0,d:st.current[1]});if(chosen===correct){st.score++;fb.textContent="Bonne réponse !";fb.className="feedback-row ok";}
   else{selected.classList.add("is-wrong");fb.textContent="Pas tout à fait, la bonne réponse est en vert.";fb.className="feedback-row no";}
   el("score").textContent="Score : "+st.score;
   var n=document.getElementById("btn-"+cfg.id+"-next");n.hidden=false;n.textContent=st.index+1<st.total?"Continuer":"Voir le résultat";
@@ -504,7 +511,7 @@ function makeCebQuiz(cfg){
  function finish(){
   var best=loadBest(cfg.key);if(best===null||st.score>best)saveBest(cfg.key,st.score);
   el("question-panel").hidden=true;el("result-panel").hidden=false;
-  el("final-score").textContent=st.score+" / "+st.total;
+  el("final-score").textContent=st.score+" / "+st.total;track("end",cfg.id,{s:st.score,n:st.total,w:st.score>=st.total/2?1:0});
  }
 }
 makeCebQuiz({id:"maths",data:MATHS,key:"lmj_maths_best"});

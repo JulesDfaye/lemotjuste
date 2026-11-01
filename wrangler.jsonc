@@ -1,18 +1,21 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // Nom du projet : il devient l'adresse https://le-mot-juste.<votre-sous-domaine>.workers.dev
   "name": "le-mot-juste",
-  // Date du jour de création du projet (sélectionne le comportement du runtime)
   "compatibility_date": "2026-11-01",
+  "main": "src/index.js",
   "assets": {
-    // Dossier publié : tout ce qu'il contient est servi par Cloudflare
     "directory": "./public",
-    // Sert public/404.html pour toute adresse inexistante
-    "not_found_handling": "404-page"
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    // Le Worker ne traite que /api/* ; le reste est servi directement par Cloudflare
+    "run_worker_first": ["/api/*"]
   },
+  "d1_databases": [
+    // Remplacez database_id par l'identifiant donné par : npx wrangler d1 create le-mot-juste-db
+    { "binding": "DB", "database_name": "le-mot-juste-db", "database_id": "REMPLACEZ_PAR_VOTRE_ID" }
+  ],
+  // Adresse e-mail de l'administrateur (non secrète). Le mot de passe, lui, est un secret Cloudflare.
+  "vars": { "ADMIN_EMAIL": "sdftechnologie@gmail.com" },
   "observability": { "enabled": true }
-
-  // Domaine personnalisé (le domaine doit être géré par Cloudflare).
-  // Retirez les // et la virgule après "observability" pour l'activer :
-  // "routes": [{ "pattern": "lemotjuste.votredomaine.com", "custom_domain": true }]
+  // Domaine personnalisé : "routes": [{ "pattern": "lemotjuste.votredomaine.com", "custom_domain": true }]
 }
