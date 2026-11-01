@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Nom du projet : il devient l'adresse https://le-mot-juste.<votre-sous-domaine>.workers.dev
+  "name": "le-mot-juste",
+  // Date du jour de création du projet (sélectionne le comportement du runtime)
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    // Dossier publié : tout ce qu'il contient est servi par Cloudflare
+    "directory": "./public",
+    // Sert public/404.html pour toute adresse inexistante
+    "not_found_handling": "404-page"
+  },
+  "observability": { "enabled": true }
+
+  // Domaine personnalisé (le domaine doit être géré par Cloudflare).
+  // Retirez les // et la virgule après "observability" pour l'activer :
+  // "routes": [{ "pattern": "lemotjuste.votredomaine.com", "custom_domain": true }]
+}
